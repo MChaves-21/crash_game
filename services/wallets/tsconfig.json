@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module":           "commonjs",
+    "target":           "ES2022",
+    "lib":              ["ES2022"],
+    "strict":           true,
+    "strictNullChecks": true,
+    "noImplicitAny":    true,
+    "esModuleInterop":  true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata":  true,
+    "skipLibCheck":     true,
+    "outDir":           "./dist",
+    "rootDir":          "./src",
+    "baseUrl":          ".",
+    "paths": {
+      "@crash/events": ["../../packages/events/src"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

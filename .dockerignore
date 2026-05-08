@@ -1,0 +1,52 @@
+# Dependências — nunca copiar, o build instala dentro do container
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+build
+**/.next
+
+# Git
+.git
+.gitignore
+
+# Env files (segurança)
+.env
+**/.env
+!**/.env.example
+
+# Logs
+*.log
+**/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Testes (não precisam ir para produção)
+**/tests
+**/*.test.ts
+**/*.spec.ts
+**/vitest.config.ts
+
+# TypeScript cache
+**/*.tsbuildinfo
+
+# Docker (evita recursão)
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+
+# Docs
+README.md
+*.md
+
+# CI
+.github

@@ -1,0 +1,150 @@
+name: crash-game
+
+services:
+
+  # ── Infraestrutura ────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/00-init.sh
+      - ./docker/postgres/games:/docker-entrypoint-initdb.d/games
+      - ./docker/postgres/wallets:/docker-entrypoint-initdb.d/wallets
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB:                       dev-mem
+      KC_HTTP_PORT:                8080
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+
+  kong:
+    image: kong:3.7
+    environment:
+      KONG_DATABASE:        "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG:   /dev/stdout
+      KONG_ADMIN_ACCESS_LOG:   /dev/stdout
+      KONG_PROXY_ERROR_LOG:    /dev/stderr
+      KONG_ADMIN_ERROR_LOG:    /dev/stderr
+      KONG_ADMIN_LISTEN:       "0.0.0.0:8001"
+    volumes:
+      - ./docker/kong/kong.yml:/etc/kong/kong.yml:ro
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    depends_on:
+      - games-service
+      - wallets-service
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Serviços de aplicação ─────────────────────────────────────────────────
+
+  games-service:
+    build:
+      context: .
+      dockerfile: services/games/Dockerfile
+    environment:
+      PORT:              4001
+      NODE_ENV:          production
+      DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/games
+      RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  wallets-service:
+    build:
+      context: .
+      dockerfile: services/wallets/Dockerfile
+    environment:
+      PORT:              4002
+      NODE_ENV:          production
+      DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/wallets
+      RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/crash-game/protocol/openid-connect/certs
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Frontend ──────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL:       http://localhost:8000
+        VITE_WS_URL:        http://localhost:8000
+        VITE_KEYCLOAK_URL:  http://localhost:8080
+        VITE_REALM:         crash-game
+        VITE_CLIENT_ID:     crash-game-client
+    ports:
+      - "3000:3000"
+    depends_on:
+      - kong
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

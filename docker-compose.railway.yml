@@ -1,0 +1,111 @@
+##############################################################################
+# docker-compose.railway.yml
+#
+# Versão SIMPLIFICADA para Railway (e verificação rápida local).
+# Remove Keycloak e Kong para reduzir uso de memória.
+#
+# Diferenças do compose principal:
+#  - Sem Keycloak (auth desabilitada — modo demo)
+#  - Sem Kong (frontend chama os serviços diretamente)
+#  - Frontend aponta direto para os serviços nas portas 4001/4002
+#
+# Uso local:
+#   docker compose -f docker-compose.railway.yml up --build
+#
+# Uso Railway:
+#   railway up (Railway lê este arquivo automaticamente se renomeado)
+##############################################################################
+
+name: crash-game-demo
+
+services:
+
+  # ── Infra leve ─────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine          # 16 em vez de 18 — mais leve
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/00-init.sh
+      - ./docker/postgres/games:/docker-entrypoint-initdb.d/games
+      - ./docker/postgres/wallets:/docker-entrypoint-initdb.d/wallets
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-alpine           # sem management UI — menor
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Serviços ───────────────────────────────────────────────────────────────
+
+  games-service:
+    build:
+      context: .
+      dockerfile: services/games/Dockerfile
+    environment:
+      PORT:              4001
+      NODE_ENV:          production
+      DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/games
+      RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
+      # Sem Keycloak — guard em modo demo aceita qualquer token
+      AUTH_DISABLED:     "true"
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  wallets-service:
+    build:
+      context: .
+      dockerfile: services/wallets/Dockerfile
+    environment:
+      PORT:              4002
+      NODE_ENV:          production
+      DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/wallets
+      RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
+      AUTH_DISABLED:     "true"
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Sem Kong — aponta direto para os serviços
+        VITE_API_GAMES_URL:    http://localhost:4001
+        VITE_API_WALLETS_URL:  http://localhost:4002
+        VITE_WS_URL:           http://localhost:4001
+        VITE_AUTH_DISABLED:    "true"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - games-service
+      - wallets-service
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -1,0 +1,43 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Env (NUNCA commitar .env real)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volumes (geradas pelo docker:up)
+docker/volumes/
+
+# TypeScript
+*.tsbuildinfo
+
+# Bun
+bun.lockb
+
+# Cobertura de testes
+coverage/

@@ -1,0 +1,24 @@
+{
+  "name": "crash-game",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/games",
+    "services/wallets",
+    "frontend"
+  ],
+  "scripts": {
+    "docker:up":    "docker compose up --build -d",
+    "docker:down":  "docker compose down",
+    "docker:prune": "docker compose down -v --rmi all --remove-orphans",
+    "test:games":   "cd services/games   && bun test tests/unit",
+    "test:wallets": "cd services/wallets && bun test tests/unit",
+    "test:e2e":     "cd services/games   && bun test tests/e2e",
+    "test":         "bun run test:games && bun run test:wallets",
+    "typecheck":    "tsc --noEmit -p services/games/tsconfig.json && tsc --noEmit -p services/wallets/tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

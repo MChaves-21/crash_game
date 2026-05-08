@@ -23,84 +23,85 @@
 // ── Eventos do Game Service → Wallet Service ──────────────────────────────────
 
 export const GameEvents = {
-  BET_PLACED:    'game.bet.placed',
-  BET_CASHOUT:   'game.bet.cashout',
+  BET_PLACED: 'game.bet.placed',
+  BET_CASHOUT: 'game.bet.cashout',
   ROUND_CRASHED: 'game.round.crashed',
 } as const;
 
 export type GameEventKey = typeof GameEvents[keyof typeof GameEvents];
 
 export interface BetPlacedEvent {
-  eventId:   string;   // UUID único do evento (idempotência)
-  betId:     string;
-  roundId:   string;
-  playerId:  string;
+  eventId: string;   // UUID único do evento (idempotência)
+  betId: string;
+  roundId: string;
+  playerId: string;
   amountCents: string; // BigInt serializado como string
-  placedAt:  string;   // ISO 8601
+  placedAt: string;   // ISO 8601
 }
 
 export interface BetCashoutEvent {
-  eventId:      string;
-  betId:        string;
-  roundId:      string;
-  playerId:     string;
-  payoutCents:  string; // BigInt serializado como string
-  multiplier:   number;
-  cashedOutAt:  string;
+  eventId: string;
+  betId: string;
+  roundId: string;
+  playerId: string;
+  payoutCents: string; // BigInt serializado como string
+  multiplier: number;
+  cashedOutAt: string;
 }
 
 export interface RoundCrashedEvent {
-  eventId:    string;
-  roundId:    string;
+  eventId: string;
+  roundId: string;
   crashPoint: number;
   loserBetIds: string[];
-  crashedAt:  string;
+  crashedAt: string;
 }
+// ── Exportando as constantes de nome de evento (o que estava faltando) ──
 
 // ── Eventos do Wallet Service → Game Service ──────────────────────────────────
 
 export const WalletEvents = {
   DEBIT_APPROVED: 'wallet.debit.approved',
   DEBIT_REJECTED: 'wallet.debit.rejected',
-  CREDIT_DONE:    'wallet.credit.done',
+  CREDIT_DONE: 'wallet.credit.done',
 } as const;
 
 export type WalletEventKey = typeof WalletEvents[keyof typeof WalletEvents];
 
 export interface DebitApprovedEvent {
-  eventId:     string;
-  betId:       string;
-  playerId:    string;
+  eventId: string;
+  betId: string;
+  playerId: string;
   amountCents: string;
-  approvedAt:  string;
+  approvedAt: string;
 }
 
 export interface DebitRejectedEvent {
-  eventId:    string;
-  betId:      string;
-  playerId:   string;
-  reason:     'INSUFFICIENT_FUNDS' | 'WALLET_NOT_FOUND';
+  eventId: string;
+  betId: string;
+  playerId: string;
+  reason: 'INSUFFICIENT_FUNDS' | 'WALLET_NOT_FOUND';
   rejectedAt: string;
 }
 
 export interface CreditDoneEvent {
-  eventId:     string;
-  betId:       string;
-  playerId:    string;
+  eventId: string;
+  betId: string;
+  playerId: string;
   payoutCents: string;
-  doneAt:      string;
+  doneAt: string;
 }
 
 // ── Configuração de filas ─────────────────────────────────────────────────────
 
 export const RABBITMQ_CONFIG = {
-  EXCHANGE:      'crash.events',
+  EXCHANGE: 'crash.events',
   EXCHANGE_TYPE: 'topic' as const,
   QUEUES: {
     /** Wallet Service consome eventos do Game */
-    WALLET_GAME_EVENTS:  'wallet.game-events',
+    WALLET_GAME_EVENTS: 'wallet.game-events',
     /** Game Service consome eventos do Wallet */
-    GAME_WALLET_EVENTS:  'game.wallet-events',
+    GAME_WALLET_EVENTS: 'game.wallet-events',
   },
   BINDING_KEYS: {
     WALLET_GAME_EVENTS: 'game.*',
@@ -119,3 +120,11 @@ export function serializeBigInt(value: bigint): string {
 export function deserializeBigInt(value: string): bigint {
   return BigInt(value);
 }
+
+export const BetPlacedEvent = GameEvents.BET_PLACED;
+export const BetCashoutEvent = GameEvents.BET_CASHOUT;
+export const RoundCrashedEvent = GameEvents.ROUND_CRASHED;
+
+export const DebitApprovedEvent = WalletEvents.DEBIT_APPROVED;
+export const DebitRejectedEvent = WalletEvents.DEBIT_REJECTED;
+export const CreditDoneEvent = WalletEvents.CREDIT_DONE;

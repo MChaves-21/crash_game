@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGameStore, formatCents, formatMultiplier } from '../../stores/game.store';
 import { gameApi, ApiError } from '../../services/api';
 import { useToast }          from '../../hooks/useToast';
-import { CountdownTimer }    from './CountdownTimer';
+import { CountdownTimer }    from './GameComponents';   // ← fix: estava './CountdownTimer'
 
 export function BetControls() {
   const [amount, setAmount]   = useState('100');
@@ -15,14 +15,16 @@ export function BetControls() {
   const canBet      = status === 'BETTING' && !myBet;
   const canCashOut  = status === 'RUNNING' && myBet?.status === 'PENDING';
   const amountCents = Math.round(parseFloat(amount || '0') * 100);
-  const potentialPayout = myBet && status === 'RUNNING'
+
+  // ← fix: usar Number() para evitar BigInt em JSX
+  const potentialPayout: bigint | null = myBet && status === 'RUNNING'
     ? myBet.amountCents * BigInt(Math.floor(multiplier * 100)) / 100n
     : null;
 
   async function handleBet() {
     if (!canBet || loading) return;
-    if (amountCents < 100)   { toast.error('Aposta mínima: R$ 1,00'); return; }
-    if (amountCents > 100000){ toast.error('Aposta máxima: R$ 1.000,00'); return; }
+    if (amountCents < 100)    { toast.error('Aposta mínima: R$ 1,00');    return; }
+    if (amountCents > 100000) { toast.error('Aposta máxima: R$ 1.000,00'); return; }
     if (BigInt(amountCents) > balanceCents) { toast.error('Saldo insuficiente'); return; }
 
     setLoading(true);
@@ -95,9 +97,7 @@ export function BetControls() {
             className="bet-input"
             style={{ paddingLeft: 36 }}
             value={amount}
-            min="1"
-            max="1000"
-            step="1"
+            min="1" max="1000" step="1"
             onChange={e => setAmount(e.target.value)}
             disabled={!canBet || loading}
             placeholder="0,00"
@@ -112,17 +112,14 @@ export function BetControls() {
               onClick={() => setAmount(String(v))}
               disabled={!canBet}
               style={{
-                flex: 1,
-                padding: '5px 4px',
+                flex: 1, padding: '5px 4px',
                 background: 'var(--bg-dark)',
                 border: '1px solid var(--border-bright)',
                 borderRadius: 4,
                 color: amount === String(v) ? 'var(--neon-green)' : 'var(--text-secondary)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '0.7rem',
+                fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
                 cursor: canBet ? 'pointer' : 'not-allowed',
-                opacity: canBet ? 1 : 0.4,
-                transition: 'all 0.15s',
+                opacity: canBet ? 1 : 0.4, transition: 'all 0.15s',
               }}
             >
               {v}
@@ -136,28 +133,27 @@ export function BetControls() {
         <div style={{
           background: 'var(--bg-dark)',
           border: `1px solid ${myBet.status === 'CASHED_OUT' ? 'var(--neon-green)' :
-                                myBet.status === 'LOST'      ? 'var(--neon-red)' :
+                                myBet.status === 'LOST'      ? 'var(--neon-red)'   :
                                 'var(--border-bright)'}`,
-          borderRadius: 8,
-          padding: '10px 14px',
+          borderRadius: 8, padding: '10px 14px',
         }}>
           <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', fontFamily: 'var(--font-display)',
                         letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>
             Minha aposta
           </div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem',
-                        color: 'var(--text-primary)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', color: 'var(--text-primary)' }}>
             {formatCents(myBet.amountCents)}
           </div>
 
-          {myBet.status === 'PENDING' && potentialPayout && status === 'RUNNING' && (
+          {/* ← fix: usar !== null em vez de truthy check direto em bigint */}
+          {myBet.status === 'PENDING' && potentialPayout !== null && status === 'RUNNING' && (
             <div style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--neon-amber)',
                           fontFamily: 'var(--font-mono)' }}>
               Potencial: {formatCents(potentialPayout)}
             </div>
           )}
 
-          {myBet.status === 'CASHED_OUT' && myBet.payoutCents && (
+          {myBet.status === 'CASHED_OUT' && myBet.payoutCents !== undefined && (
             <div style={{ marginTop: 4, fontSize: '0.78rem', color: 'var(--neon-green)',
                           fontFamily: 'var(--font-mono)' }}>
               ✓ Sacou {formatMultiplier(myBet.multiplier!)} → {formatCents(myBet.payoutCents)}
@@ -173,23 +169,14 @@ export function BetControls() {
         </div>
       )}
 
-      {/* Botões de ação */}
+      {/* Botões */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
-        <button
-          className="btn-bet w-full"
-          onClick={handleBet}
-          disabled={!canBet || loading}
-        >
+        <button className="btn-bet w-full" onClick={handleBet} disabled={!canBet || loading}>
           {loading && canBet ? 'Registrando...' : 'Apostar'}
         </button>
-
-        <button
-          className="btn-cashout w-full"
-          onClick={handleCashOut}
-          disabled={!canCashOut || loading}
-        >
-          {canCashOut
-            ? `Sacar ${potentialPayout ? formatCents(potentialPayout) : ''}`
+        <button className="btn-cashout w-full" onClick={handleCashOut} disabled={!canCashOut || loading}>
+          {canCashOut && potentialPayout !== null
+            ? `Sacar ${formatCents(potentialPayout)}`
             : 'Cash Out'}
         </button>
       </div>

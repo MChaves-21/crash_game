@@ -42,14 +42,14 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_DB:                       dev-mem
-      KC_HTTP_PORT:                8080
+      KC_DB:                        dev-mem
+      KC_HTTP_PORT:                 8080
     volumes:
       - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; f=$$?; exec 3<&-; exit $$f"]
       interval: 15s
       timeout: 10s
       retries: 15
@@ -58,7 +58,7 @@ services:
   kong:
     image: kong:3.7
     environment:
-      KONG_DATABASE:        "off"
+      KONG_DATABASE:         "off"
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
       KONG_PROXY_ACCESS_LOG:   /dev/stdout
       KONG_ADMIN_ACCESS_LOG:   /dev/stdout
@@ -86,7 +86,7 @@ services:
       context: .
       dockerfile: services/games/Dockerfile
     environment:
-      PORT:              4001
+      PORT:               4001
       NODE_ENV:          production
       DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/games
       RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
@@ -107,7 +107,7 @@ services:
       context: .
       dockerfile: services/wallets/Dockerfile
     environment:
-      PORT:              4002
+      PORT:               4002
       NODE_ENV:          production
       DATABASE_URL:      postgresql://postgres:postgres@postgres:5432/wallets
       RABBITMQ_URL:      amqp://guest:guest@rabbitmq:5672
@@ -133,8 +133,8 @@ services:
         VITE_API_URL:       http://localhost:8000
         VITE_WS_URL:        http://localhost:8000
         VITE_KEYCLOAK_URL:  http://localhost:8080
-        VITE_REALM:         crash-game
-        VITE_CLIENT_ID:     crash-game-client
+        VITE_REALM:          crash-game
+        VITE_CLIENT_ID:      crash-game-client
     ports:
       - "3000:3000"
     depends_on:

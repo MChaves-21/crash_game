@@ -111,10 +111,10 @@ export function BetsList() {
                   {formatMultiplier(bet.multiplier)}
                 </div>
               )}
-              {bet.status === 'CASHED_OUT' && bet.payoutCents && (
+              {bet.status === 'CASHED_OUT' && bet.payoutCents !== undefined && (
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem',
                               color: 'var(--neon-green-dim)' }}>
-                  {formatCents(bet.payoutCents)}
+                  {formatCents(bet.payoutCents!)}
                 </div>
               )}
               {bet.status === 'PENDING' && (

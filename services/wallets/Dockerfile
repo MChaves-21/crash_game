@@ -3,9 +3,12 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
+# Copia TODOS os package.json dos workspaces
 COPY package.json bun.lockb* ./
-COPY packages/events/package.json   ./packages/events/package.json
-COPY services/wallets/package.json  ./services/wallets/package.json
+COPY packages/events/package.json  ./packages/events/package.json
+COPY services/games/package.json   ./services/games/package.json
+COPY services/wallets/package.json ./services/wallets/package.json
+COPY frontend/package.json         ./frontend/package.json
 
 RUN bun install --frozen-lockfile
 

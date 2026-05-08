@@ -3,12 +3,20 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-COPY frontend/package.json ./
+# Copia TODOS os package.json dos workspaces
+COPY package.json bun.lockb* ./
+COPY packages/events/package.json  ./packages/events/package.json
+COPY services/games/package.json   ./services/games/package.json
+COPY services/wallets/package.json ./services/wallets/package.json
+COPY frontend/package.json         ./frontend/package.json
+
 RUN bun install --frozen-lockfile
 
-COPY frontend/ ./
+COPY packages/events ./packages/events
+COPY frontend/       ./frontend/
 
-# Variáveis injetadas em build-time via ARG
+WORKDIR /app/frontend
+
 ARG VITE_API_URL=http://localhost:8000
 ARG VITE_WS_URL=http://localhost:8000
 ARG VITE_KEYCLOAK_URL=http://localhost:8080
@@ -26,9 +34,8 @@ RUN bun run build
 # ── Runtime stage (nginx) ──────────────────────────────────────────────────────
 FROM nginx:alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
-# Configuração do nginx para SPA (react-router)
 RUN echo 'server { \
   listen 3000; \
   root /usr/share/nginx/html; \

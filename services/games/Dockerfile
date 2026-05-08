@@ -3,15 +3,18 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copia arquivos de dependências do monorepo
+# Copia TODOS os package.json dos workspaces
+# O Bun precisa encontrar todos eles para resolver o monorepo
 COPY package.json bun.lockb* ./
-COPY packages/events/package.json ./packages/events/package.json
-COPY services/games/package.json  ./services/games/package.json
+COPY packages/events/package.json  ./packages/events/package.json
+COPY services/games/package.json   ./services/games/package.json
+COPY services/wallets/package.json ./services/wallets/package.json
+COPY frontend/package.json         ./frontend/package.json
 
 # Instala dependências
 RUN bun install --frozen-lockfile
 
-# Copia o código-fonte
+# Copia apenas o código necessário para este serviço
 COPY packages/events ./packages/events
 COPY services/games  ./services/games
 
@@ -20,7 +23,6 @@ FROM oven/bun:1-slim
 
 WORKDIR /app
 
-# Copia tudo do builder (bun não precisa compilar TypeScript)
 COPY --from=builder /app ./
 
 WORKDIR /app/services/games
@@ -30,7 +32,6 @@ ENV PORT=4001
 
 EXPOSE 4001
 
-# Health check para o Docker Compose aguardar o serviço estar pronto
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
   CMD curl -f http://localhost:4001/games/health || exit 1
 

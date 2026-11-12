@@ -5,8 +5,8 @@
 ## Setup em 2 comandos
 
 ```bash
-git clone <repositório>
-cd fullstack-challenge && bun install && bun run docker:up
+git clone https://github.com/MChaves-21/crash_game.git
+cd crash_game && bun install && bun run docker:up
 ```
 
 Aguarde ~60s para o Keycloak inicializar. Tudo sobe automaticamente.

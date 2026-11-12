@@ -58,27 +58,27 @@ cp frontend/.env.example         frontend/.env
 
 ## Arquitetura
 
-```
-Frontend (Vite + React + Tailwind)
-    │ HTTP/REST + WebSocket
-    ▼
-Kong :8000  (API Gateway · CORS · Rate Limit 120 req/min)
-    │                 │
-Game Service :4001    Wallet Service :4002
-(NestJS + Bun)        (NestJS + Bun)
-    │                         │
-    └──── RabbitMQ ───────────┘
-          crash.events (topic exchange)
-          game.wallet-events
-          wallet.game-events
-          crash.dead-letter (DLX)
-    │
-PostgreSQL :5432
-├── games:   rounds, bets, outbox, inbox
-└── wallets: wallets, transactions, outbox, inbox
+```mermaid
+flowchart TB
+    FE["Frontend<br/>Vite + React + Tailwind"]
+    KONG["Kong :8000<br/>API Gateway · CORS · rate limit 120 req/min"]
+    KC["Keycloak :8080<br/>realm crash-game · PKCE S256"]
+    GAME["Game Service :4001<br/>NestJS + Bun"]
+    WALLET["Wallet Service :4002<br/>NestJS + Bun"]
+    MQ[("RabbitMQ<br/>crash.events · game.wallet-events<br/>wallet.game-events · DLX")]
+    PG[("PostgreSQL :5432<br/>games: rounds, bets, outbox, inbox<br/>wallets: wallets, transactions, outbox, inbox")]
 
-Keycloak :8080 (realm: crash-game, PKCE S256)
+    FE -- "HTTP/REST + WebSocket" --> KONG
+    FE -- "login" --> KC
+    KONG --> GAME
+    KONG --> WALLET
+    GAME <-- "eventos (outbox → fila)" --> MQ
+    WALLET <-- "eventos (outbox → fila)" --> MQ
+    GAME --> PG
+    WALLET --> PG
 ```
+
+Cada serviço grava a mudança e o evento (**outbox**) na mesma transação; um poller publica no RabbitMQ, e o outro lado registra o que já processou (**inbox**). Assim nenhum débito ou crédito se perde nem é aplicado duas vezes.
 
 ---
 
